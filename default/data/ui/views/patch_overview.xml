@@ -1,0 +1,47 @@
+<dashboard version="1.1" theme="light">
+  <label>TA-patch Overview</label>
+  <description>Collects patch compliance: upgradable package count (security vs total where distinguishable), days since the last successful apt/dnf transaction (from package-manager history</description>
+  <row>
+    <panel>
+      <title>Hosts Reporting (latest)</title>
+      <table>
+        <search>
+          <query>index=main sourcetype="patch:status"
+| stats latest(_time) as "Last seen", count as Reports by host
+| table host "Last seen" Reports</query>
+          <done/>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Distinct patch.* Metrics (last hour)</title>
+      <single>
+        <search>
+          <query>| mcatalog values(metric_name) as m where index=metrics metric_name="patch.*"
+| eval count=mvcount(m)</query>
+          <done/>
+        </search>
+        <option name="underLabel">patch.* metrics streaming</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Issues (newest first)</title>
+      <table>
+        <search>
+          <query>index=main sourcetype="patch:status" _raw="*alarm*"
+| sort - _time
+| table _time host _raw
+| rename _raw as Event
+| head 200</query>
+          <done/>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+</dashboard>

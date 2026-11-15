@@ -1,0 +1,53 @@
+TA-patch
+====
+
+Collects patch compliance: upgradable package count (security vs total where distinguishable), days since the last successful apt/dnf transaction (from package-manager history logs), and the distro release. Emits JSON events to index=main (sourcetype patch:status) and patch.* metrics to index=metrics (sourcetype patch:metrics) hourly, with dashboards.
+
+Prerequisites
+-------------
+  * apt-get (Debian/Ubuntu) or dnf (RHEL/Rocky/Alma) - auto-detected
+  * Splunk Enterprise or Universal Forwarder 9.x - 10.6 (forwarder recommended
+    on monitored hosts).
+  * A metrics-typed index (default name: metrics) on the indexer:
+
+      [metrics]
+      datatype = metric
+
+    Forwarders only need that index to exist on the indexer side.
+  * No network egress, no root requirement beyond the Splunk service account.
+    Fully standalone add-on with no dependencies.
+
+Install
+-------
+Install on each monitored host (Apps > Install app from file, splunk install
+app, or deployment server), restart Splunk, then verify:
+
+  index=main sourcetype="patch:status" | head
+
+Search quick reference
+----------------------
+  index=main sourcetype="patch:status" | head
+  | mcatalog values(metric_name) where index=metrics metric_name="patch.*" by host
+  | mstats avg("patch.*") where index=metrics span=60s by host
+
+Usage
+-----
+Events: index=main sourcetype=patch:status  (pm, upgradable, security_upgradable, days_since_update, release)
+Metrics: patch.upgradable, patch.security_upgradable, patch.days_since_update on index=metrics
+Dashboards: TA-Patch > Patch Overview / Patch Metrics
+
+Configure
+---------
+Override the interval or destination index in etc/apps/TA-patch/local/inputs.conf
+(never edit default/).
+
+Troubleshooting
+---------------
+  * dnf check-update can be slow on large repos; default interval is 1h.
+  * History-log parsing falls back gracefully when logs are rotated away.
+
+License
+-------
+SOURCE-AVAILABLE (see LICENSE) - free personal, educational and evaluation
+use; commercial or production use requires a paid license from BentleyPC
+LLC (https://www.bentleypc.com).

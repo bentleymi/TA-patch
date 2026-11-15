@@ -1,0 +1,7 @@
+<application>
+  <nav>
+    <view name="patch_overview" />
+    <view name="patch_metrics" />
+    <search label="TA-patch Events" search="search index=main sourcetype=patch:status" />
+  </nav>
+</application>
