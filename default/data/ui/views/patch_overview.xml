@@ -3,43 +3,53 @@
   <description>Collects patch compliance: upgradable package count (security vs total where distinguishable), days since the last successful apt/dnf transaction (from package-manager history</description>
   <row>
     <panel>
-      <title>Hosts Reporting (latest)</title>
-      <table>
-        <search>
-          <query>index=main sourcetype="patch:status"
-| stats latest(_time) as "Last seen", count as Reports by host
-| table host "Last seen" Reports</query>
-          <done/>
-        </search>
-        <option name="drilldown">none</option>
-      </table>
-    </panel>
-  </row>
-  <row>
-    <panel>
-      <title>Distinct patch.* Metrics (last hour)</title>
+      <title>Upgradable packages (per host, latest)</title>
       <single>
         <search>
-          <query>| mcatalog values(metric_name) as m where index=metrics metric_name="patch.*"
-| eval count=mvcount(m)</query>
+          <query>| mstats avg("patch.upgradable") as value where index=metrics span=5m
+| fields - _time | tail 1</query>
           <done/>
         </search>
-        <option name="underLabel">patch.* metrics streaming</option>
+        <option name="underLabel">latest per host</option>
+      </single>
+    </panel>
+    <panel>
+      <title>Security-critical upgradable (per host, latest)</title>
+      <single>
+        <search>
+          <query>| mstats avg("patch.security_upgradable") as value where index=metrics span=5m
+| fields - _time | tail 1</query>
+          <done/>
+        </search>
+      </single>
+    </panel>
+    <panel>
+      <title>Upgradable (fleet total, latest)</title>
+      <single>
+        <search>
+          <query>index=main sourcetype="patch:status"
+| eventstats latest(_time) as lt by host
+| dedup host lt
+| spath input=_raw output=n path=upgradable
+| stats sum(n) as value</query>
+          <done/>
+        </search>
       </single>
     </panel>
   </row>
   <row>
     <panel>
-      <title>Issues (newest first)</title>
+      <title>Hosts - pending updates (latest per host)</title>
       <table>
         <search>
-          <query>index=main sourcetype="patch:status" _raw="*alarm*"
-| sort - _time
-| table _time host _raw
-| rename _raw as Event
-| head 200</query>
+          <query>index=main sourcetype="patch:status"
+| eventstats latest(_time) as lt by host
+| dedup host lt
+| table host lt pm release upgradable security_upgradable
+| sort - upgradable</query>
           <done/>
         </search>
+        <option name="count">50</option>
         <option name="drilldown">none</option>
       </table>
     </panel>
