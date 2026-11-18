@@ -3,24 +3,25 @@
   <description>Collects patch compliance: upgradable package count (security vs total where distinguishable), days since the last successful apt/dnf transaction (from package-manager history</description>
   <row>
     <panel>
-      <title>Upgradable packages (per host, latest)</title>
+      <title>Upgradable packages (fleet, latest)</title>
       <single>
         <search>
           <query>| mstats avg("patch.upgradable") as value where index=metrics span=5m
 | fields - _time | tail 1</query>
           <done/>
         </search>
-        <option name="underLabel">latest per host</option>
+        <option name="underLabel">fleet, latest</option>
       </single>
     </panel>
     <panel>
-      <title>Security-critical upgradable (per host, latest)</title>
+      <title>Security-critical upgradable (fleet, latest)</title>
       <single>
         <search>
           <query>| mstats avg("patch.security_upgradable") as value where index=metrics span=5m
 | fields - _time | tail 1</query>
           <done/>
         </search>
+        <option name="underLabel">fleet, latest</option>
       </single>
     </panel>
     <panel>
@@ -28,9 +29,12 @@
       <single>
         <search>
           <query>index=main sourcetype="patch:status"
-| eventstats latest(_time) as lt by host
-| dedup host lt
+| where isnotnull(upgradable) AND upgradable!=""
+| sort 0 - _time
+| dedup host
 | spath input=_raw output=n path=upgradable
+| where isnotnull(n) AND n!=""
+| eval n=tonumber(n)
 | stats sum(n) as value</query>
           <done/>
         </search>
@@ -43,10 +47,11 @@
       <table>
         <search>
           <query>index=main sourcetype="patch:status"
-| eventstats latest(_time) as lt by host
-| dedup host lt
-| table host lt pm release upgradable security_upgradable
-| sort - upgradable</query>
+| where isnotnull(upgradable) AND upgradable!=""
+| sort 0 - _time
+| dedup host
+| table host _time pm release upgradable security_upgradable not_upgraded days_since_update
+| eval upg_num=tonumber(upgradable) | sort - upg_num | fields - upg_num</query>
           <done/>
         </search>
         <option name="count">50</option>
